@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReceiptScan</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f5f2ec; min-height: 100vh; }
+
+    header {
+      background: #0e0e0e; color: #f5f2ec;
+      padding: 1rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    header h1 { font-size: 20px; }
+    header span { font-size: 11px; opacity: 0.5; }
+
+    main {
+      max-width: 900px; margin: 2rem auto;
+      padding: 0 1.5rem;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+    }
+
+    .card {
+      background: white; border-radius: 8px;
+      border: 1px solid #e0dbd0; padding: 1.25rem;
+    }
+
+    .card-title {
+      font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.1em; color: #7a7a7a;
+      margin-bottom: 1rem;
+    }
+
+    .drop-zone {
+      border: 1.5px dashed #ccc; border-radius: 8px;
+      padding: 2.5rem 1rem; text-align: center;
+      cursor: pointer; background: #f5f2ec;
+      transition: border-color 0.2s;
+      position: relative;
+    }
+    .drop-zone:hover { border-color: #c84b2f; }
+    .drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .drop-zone p { font-size: 14px; color: #3a3a3a; margin-top: 8px; }
+    .drop-zone small { color: #7a7a7a; font-size: 12px; }
+
+    #previewArea { display: none; margin-top: 1rem; text-align: center; position: relative; }
+    #previewArea img { max-height: 200px; max-width: 100%; border-radius: 6px; border: 1px solid #e0dbd0; }
+    #removeBtn {
+      position: absolute; top: 4px; right: 4px;
+      background: #0e0e0e; color: white; border: none;
+      border-radius: 50%; width: 22px; height: 22px;
+      cursor: pointer; font-size: 13px;
+    }
+
+    #extractBtn {
+      margin-top: 1rem; width: 100%; padding: 12px;
+      background: #0e0e0e; color: white; border: none;
+      border-radius: 6px; font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: background 0.15s;
+    }
+    #extractBtn:hover:not(:disabled) { background: #c84b2f; }
+    #extractBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    #status { margin-top: 8px; font-size: 12px; color: #7a7a7a; text-align: center; min-height: 16px; }
+
+    .notice {
+      margin-top: 10px; padding: 10px 12px;
+      border-radius: 6px; font-size: 13px;
+    }
+    .notice-success { background: #d8f3dc; color: #2d6a4f; border: 1px solid #95d5b2; }
+    .notice-error { background: #fff0ec; color: #c84b2f; border: 1px solid #f5c6b8; }
+
+    label {
+      display: block; font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.08em; color: #7a7a7a; margin-bottom: 5px;
+    }
+    input[type=text] {
+      width: 100%; padding: 9px 11px;
+      border: 1px solid #e0dbd0; border-radius: 6px;
+      background: #f5f2ec; font-size: 14px; color: #0e0e0e;
+      outline: none; transition: border-color 0.15s;
+    }
+    input[type=text]:focus { border-color: #0e0e0e; background: white; }
+    input[type=text].filled { border-color: #2d6a4f; background: #d8f3dc; color: #2d6a4f; }
+
+    .field { margin-bottom: 1rem; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+
+    .form-actions { display: flex; gap: 8px; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e0dbd0; }
+    #submitBtn {
+      flex: 1; padding: 11px; background: #2d6a4f; color: white;
+      border: none; border-radius: 6px; font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: background 0.15s;
+    }
+    #submitBtn:hover { background: #1b4332; }
+    #clearBtn {
+      padding: 11px 16px; background: transparent; color: #3a3a3a;
+      border: 1px solid #e0dbd0; border-radius: 6px;
+      font-size: 14px; cursor: pointer;
+    }
+    #clearBtn:hover { background: #f5f2ec; }
+
+    .empty-state { text-align: center; padding: 3rem 1rem; color: #7a7a7a; }
+    .empty-state .icon { font-size: 36px; margin-bottom: 10px; }
+    .empty-state p { font-size: 13px; line-height: 1.6; }
+
+    .submissions { grid-column: 1 / -1; }
+    .sub-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 0; border-bottom: 1px solid #e0dbd0;
+    }
+    .sub-item:last-child { border-bottom: none; }
+    .sub-merchant { font-weight: 500; font-size: 14px; }
+    .sub-date { font-size: 12px; color: #7a7a7a; margin-top: 2px; }
+    .sub-amount { font-size: 18px; color: #c84b2f; font-weight: 500; }
+    .sub-currency { font-size: 12px; color: #7a7a7a; text-align: right; }
+    .sub-empty { font-size: 13px; color: #7a7a7a; padding: 1rem 0; }
+
+    @media (max-width: 640px) {
+      main { grid-template-columns: 1fr; }
+      .submissions { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>ReceiptScan</h1>
+  <span>Powered by Llama 3.2 Vision</span>
+</header>
+
+<main>
+
+  <!-- Upload Card -->
+  <div class="card">
+    <div class="card-title">Step 1 — Upload receipt</div>
+
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept="image/*" />
+      <div style="font-size:32px;">🧾</div>
+      <p>Click to upload or drag & drop</p>
+      <small>JPG, PNG, WEBP</small>
+    </div>
+
+    <div id="previewArea">
+      <img id="previewImg" alt="Receipt preview" />
+      <button id="removeBtn">×</button>
+    </div>
+
+    <button id="extractBtn" disabled>✦ Extract with Llama AI</button>
+    <div id="status"></div>
+    <div id="noticeArea"></div>
+  </div>
+
+  <!-- Form Card -->
+  <div class="card">
+    <div class="card-title">Step 2 — Extracted fields</div>
+
+    <div id="emptyState" class="empty-state">
+      <div class="icon">📋</div>
+      <p>Upload a receipt and click extract — fields will appear here for you to review and edit.</p>
+    </div>
+
+    <div id="formState" style="display:none;">
+      <div class="field">
+        <label for="merchantName">Merchant name</label>
+        <input type="text" id="merchantName" placeholder="e.g. McDonald's" />
+      </div>
+      <div class="field-row">
+        <div>
+          <label for="receiptDate">Date</label>
+          <input type="text" id="receiptDate" placeholder="e.g. 2025-05-11" />
+        </div>
+        <div>
+          <label for="currency">Currency</label>
+          <input type="text" id="currency" placeholder="e.g. MYR" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="totalAmount">Total amount</label>
+        <input type="text" id="totalAmount" placeholder="e.g. 24.50" />
+      </div>
+      <div class="form-actions">
+        <button id="clearBtn">↺ Clear</button>
+        <button id="submitBtn">✓ Submit receipt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submissions -->
+  <div class="card submissions">
+    <div class="card-title">Step 3 — Submitted receipts</div>
+    <div id="subEmpty" class="sub-empty">No receipts submitted yet.</div>
+    <div id="subList"></div>
+  </div>
+
+</main>
+
+<script>
+  let selectedFile = null;
+  let submissions = [];
+
+  const fileInput = document.getElementById('fileInput');
+  const dropZone = document.getElementById('dropZone');
+  const previewArea = document.getElementById('previewArea');
+  const previewImg = document.getElementById('previewImg');
+  const removeBtn = document.getElementById('removeBtn');
+  const extractBtn = document.getElementById('extractBtn');
+  const status = document.getElementById('status');
+  const noticeArea = document.getElementById('noticeArea');
+  const emptyState = document.getElementById('emptyState');
+  const formState = document.getElementById('formState');
+  const merchantName = document.getElementById('merchantName');
+  const receiptDate = document.getElementById('receiptDate');
+  const currency = document.getElementById('currency');
+  const totalAmount = document.getElementById('totalAmount');
+  const clearBtn = document.getElementById('clearBtn');
+  const submitBtn = document.getElementById('submitBtn');
+  const subEmpty = document.getElementById('subEmpty');
+  const subList = document.getElementById('subList');
+
+  function loadFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      previewImg.src = e.target.result;
+      previewArea.style.display = 'block';
+      extractBtn.disabled = false;
+      noticeArea.innerHTML = '';
+      status.textContent = '';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#c84b2f'; });
+  dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = '#ccc');
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.style.borderColor = '#ccc';
+    loadFile(e.dataTransfer.files[0]);
+  });
+
+  removeBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    selectedFile = null;
+    fileInput.value = '';
+    previewArea.style.display = 'none';
+    previewImg.src = '';
+    extractBtn.disabled = true;
+    noticeArea.innerHTML = '';
+    status.textContent = '';
+    formState.style.display = 'none';
+    emptyState.style.display = 'block';
+  });
+
+  extractBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+    extractBtn.disabled = true;
+    extractBtn.textContent = 'Extracting...';
+    status.textContent = 'Sending to GPT-4o...';
+    noticeArea.innerHTML = '';
+
+    const formData = new FormData();
+    formData.append('receipt', selectedFile);
+
+    try {
+      const res = await fetch('/extract', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
+
+      const parsed = JSON.parse(data.result);
+      setField(merchantName, parsed.merchant_name);
+      setField(receiptDate, parsed.date);
+      setField(currency, parsed.currency);
+      setField(totalAmount, parsed.total_amount);
+
+      emptyState.style.display = 'none';
+      formState.style.display = 'block';
+      status.textContent = '';
+      showNotice('success', '✓ Fields extracted — review and edit before submitting.');
+    } catch (err) {
+      status.textContent = '';
+      showNotice('error', '✗ ' + err.message);
+    } finally {
+      extractBtn.disabled = false;
+      extractBtn.textContent = '✦ Extract with GPT-4o';
+    }
+  });
+
+  function setField(el, val) {
+    const v = val && val !== 'Unknown' ? val : '';
+    el.value = v;
+    el.classList.toggle('filled', !!v);
+    el.addEventListener('input', () => el.classList.remove('filled'), { once: true });
+  }
+
+  function showNotice(type, msg) {
+    noticeArea.innerHTML = `<div class="notice notice-${type}">${msg}</div>`;
+  }
+
+  clearBtn.addEventListener('click', () => {
+    [merchantName, receiptDate, currency, totalAmount].forEach(el => {
+      el.value = '';
+      el.classList.remove('filled');
+    });
+    noticeArea.innerHTML = '';
+  });
+
+  submitBtn.addEventListener('click', () => {
+    const m = merchantName.value.trim();
+    const a = totalAmount.value.trim();
+    if (!m && !a) {
+      showNotice('error', '✗ Please fill in at least merchant name and total amount.');
+      return;
+    }
+    submissions.unshift({
+      merchant: m || '—',
+      date: receiptDate.value.trim() || '—',
+      amount: a || '—',
+      currency: currency.value.trim() || '—'
+    });
+    renderSubmissions();
+    formState.style.display = 'none';
+    emptyState.style.display = 'block';
+    noticeArea.innerHTML = '';
+    showNotice('success', '✓ Receipt saved!');
+    removeBtn.click();
+  });
+
+  function renderSubmissions() {
+    if (!submissions.length) { subEmpty.style.display = 'block'; subList.innerHTML = ''; return; }
+    subEmpty.style.display = 'none';
+    subList.innerHTML = submissions.map(s => `
+      <div class="sub-item">
+        <div>
+          <div class="sub-merchant">${s.merchant}</div>
+          <div class="sub-date">${s.date}</div>
+        </div>
+        <div>
+          <div class="sub-amount">${s.amount}</div>
+          <div class="sub-currency">${s.currency}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+</script>
+</body>
+</html>
